@@ -60,4 +60,4 @@ $(document).ready(function() {
 
 setTimeout(function(){
     $('#message').fadeOut('normal')
-}, 500)
+}, 5000)

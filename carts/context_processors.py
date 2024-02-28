@@ -15,8 +15,15 @@ def counter(request):
         # then in the cart_item, we are gonna bring all the items that are in the cartitem based, but only those with session key
         try:
             # always try to remember that the session key comes with a request from the user, so it needs to accept a request
+            
+            #since the context processor count fucnction is the one that adds the number of a product in the cart image, now it is going to be based on the user
+            
             cart = Cart.objects.filter(cart_id=_cart_id(request))
-            cart_items = CartItem.objects.all().filter(cart=cart[:1])
+            # if the user is really authenticated, then assigns the counter to the user 
+            if request.user.is_authenticated:
+                cart_items = CartItem.objects.all().filter(user=request.user)    
+            else:
+                cart_items = CartItem.objects.all().filter(cart=cart[:1])
             
             # looping through the cartitem so that it can be printed indiidually and assigned to a key value 'links'
             for cart_item in cart_items:

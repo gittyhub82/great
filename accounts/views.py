@@ -4,6 +4,8 @@ from .forms import *
 from django.contrib import messages, auth
 from django.contrib.auth.decorators import login_required
 from .models import *
+from carts.models import *
+from store.views import _cart_id
 # Create your views here.
 
 
@@ -14,6 +16,8 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import EmailMessage
+
+import requests
 
 
 
@@ -79,9 +83,66 @@ def login(request):
         user = auth.authenticate(email=email, password=password)
         
         if user is not None:
+            # here is the try-except block which checks the user cart_id and cartitem if they exists for a user.If it does, then assign it to the user account and update thier cartitem
+            try:
+                # this here i am trying to get the session id and assigns it to the cart_id. If yes...
+                cart = Cart.objects.get(cart_id=_cart_id(request))
+                # check if the cart exists or not
+                is_cart_item_exists = CartItem.objects.filter(cart=cart).exists() #the cart in the database is equal to the cart up there
+                
+                if is_cart_item_exists:
+                    # we get the cart item and then assigns it to the current user
+                    cart_item = CartItem.objects.filter(cart=cart)
+                    # we are going to loop over this cart item and then assign the looped item to the user
+                    
+                    # the current product variation the actually submits
+                    product_variation = []
+                    # we gotta loop over that cart_item up there, and append in to the product variation
+                    for item in cart_item:
+                        variations = item.variations.all()
+                        # always remember to make it into a list
+                        product_variation.append(list(variations))
+                        
+                    # filter this based on the user
+                    cart_item = CartItem.objects.filter(user=user)
+                    ex_var_list = []
+                    id = []
+                    for item in cart_item:
+                        existing_variation = item.variations.all()
+                        ex_var_list.append(list(existing_variation))
+                        id.append(item.id)
+                        
+                    # now, it is time to loop over the product_variation aka current_variation saved by the user
+                    for pr in product_variation:
+                        if pr in ex_var_list:
+                            # get the index of pr in the existing variation list
+                            index = ex_var_list.index(pr)
+                            item_id = id[index]
+                            item = CartItem.objects.get(id=item_id)
+                            # adds the current quantity if it matches, assign it to the current user and then save it
+                            item.quantity += 1
+                            item.user = user
+                            item.save()
+                        else:
+                            # this here is for a user that hasn't logged in
+                            cart_item = CartItem.objects.filter(cart=cart)
+                            for item in cart_item:
+                                # remember, the cartitem has a field 'user' which is a foreign key to the Account model
+                                item.user = user  #item.user is access the database  and the user is the current user about to login
+                                item.save()
+            except:
+                pass
             auth.login(request, user)
-            # messages.success(request, 'You have logged in.')
-            return redirect('category:index')
+            messages.success(request, 'You are now logged in.')
+            url = request.META.get('HTTP_REFERER')
+            try:
+                query = requests.utils.urlparse(url).query
+                params = dict(x.split('=') for x in query.split('&'))
+                if 'next' in params:
+                    next_page = params['next']
+                    return redirect(next_page)
+            except:
+                return redirect('accounts:dashboard')
         
         else:
             messages.error(request, 'Invalid login credentials')

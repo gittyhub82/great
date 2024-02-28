@@ -156,3 +156,6 @@ EMAIL_USE_TLS = True
 EMAIL_USE_SSL = False
 EMAIL_HOST_USER = 'gittyhub8@gmail.com'
 EMAIL_HOST_PASSWORD = 'tnmlpieufqcgjbqp'
+
+
+LOGIN_URL = 'accounts:login'
